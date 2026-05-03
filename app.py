@@ -3,105 +3,113 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 
-st.title("📊 Math Recovery System")
-st.write("Analisis Learning Loss Matematika Siswa (K-Means Clustering)")
+st.set_page_config(page_title="MathTrack", layout="centered")
 
-# Upload file
+st.title("📊 MathTrack")
+st.caption("Analisis Learning Loss Matematika Berbasis Data Mining")
+
 uploaded_file = st.file_uploader("Upload Data Siswa (Excel)", type=["xlsx"])
 
-if uploaded_file:
-    data = pd.read_excel(uploaded_file)
+if uploaded_file is not None:
+
+    df = pd.read_excel(uploaded_file)
 
     st.subheader("📄 Data Awal")
-    st.write(data)
+    st.write(df)
 
-    # ===== K-MEANS CLUSTERING =====
-    X = data[['Pecahan', 'Aljabar']]
+    # ===== CLUSTERING =====
+    X = df[['Pecahan', 'Aljabar']]
 
     kmeans = KMeans(n_clusters=3, random_state=0)
-    data['Cluster'] = kmeans.fit_predict(X)
+    df['Cluster'] = kmeans.fit_predict(X)
 
-    # ===== INTERPRETASI CLUSTER =====
-    def interpretasi(cluster):
-        if cluster == 0:
-            return "Kelompok 1"
-        elif cluster == 1:
-            return "Kelompok 2"
-        else:
-            return "Kelompok 3"
+    mapping = {
+        0: 'Kelompok 1 (Fokus Pecahan)',
+        1: 'Kelompok 2 (Fokus Aljabar)',
+        2: 'Kelompok 3 (Remedial)'
+    }
 
-    data['Kategori'] = data['Cluster'].apply(interpretasi)
+    df['Kategori'] = df['Cluster'].map(mapping)
 
-    # ===== OUTPUT =====
+    # ===== HASIL =====
     st.subheader("📊 Hasil Clustering")
-    st.write(data)
+    st.dataframe(df)
 
-    # ===== GRAFIK =====
+    # ===== DISTRIBUSI =====
     st.subheader("📈 Distribusi Cluster")
-    grafik = data['Kategori'].value_counts()
+
+    cluster_counts = df['Kategori'].value_counts()
 
     fig, ax = plt.subplots()
-    grafik.plot(kind='bar', ax=ax)
+    cluster_counts.plot(kind='bar', ax=ax)
+    plt.xticks(rotation=30)
     st.pyplot(fig)
+
+    # ===== ANALISIS KELAS =====
+    st.subheader("📊 Analisis Kelas")
+
+    total = len(df)
+
+    for kategori, jumlah in cluster_counts.items():
+        persen = (jumlah / total) * 100
+        st.write(f"{kategori}: {jumlah} siswa ({persen:.1f}%)")
+
+    # ===== INSIGHT OTOMATIS (WAH BANGET) =====
+    st.subheader("🧠 Insight Otomatis")
+
+    dominan = cluster_counts.idxmax()
+
+    if "Remedial" in dominan:
+        st.error("Mayoritas siswa mengalami learning loss tinggi. Dibutuhkan intervensi segera.")
+        tingkat = "TINGGI"
+    elif "Pecahan" in dominan:
+        st.warning("Sebagian besar siswa lemah pada pecahan.")
+        tingkat = "SEDANG"
+    else:
+        st.success("Kemampuan siswa relatif baik, perlu penguatan ringan.")
+        tingkat = "RENDAH"
+
+    st.write(f"📌 Tingkat Learning Loss Kelas: **{tingkat}**")
+
+    # ===== DETEKSI SISWA BERISIKO =====
+    st.subheader("🚨 Siswa Prioritas")
+
+    siswa_risiko = df[df['Kategori'].str.contains("Remedial")]
+
+    if len(siswa_risiko) > 0:
+        st.write("Siswa yang membutuhkan perhatian khusus:")
+        st.dataframe(siswa_risiko)
+    else:
+        st.success("Tidak ada siswa dengan risiko tinggi")
 
     # ===== REKOMENDASI =====
     st.subheader("🎯 Rekomendasi Pembelajaran")
 
-    def rekomendasi(kategori):
-        if kategori == "Kelompok 1":
-            return "Fokus pada penguatan pecahan"
-        elif kategori == "Kelompok 2":
-            return "Fokus pada penguatan aljabar"
+    rekomendasi = []
+
+    for i in range(len(df)):
+        if "Pecahan" in df['Kategori'][i]:
+            rekomendasi.append("Latihan pecahan bertahap + media visual")
+        elif "Aljabar" in df['Kategori'][i]:
+            rekomendasi.append("Pendekatan kontekstual & pemecahan masalah")
         else:
-            return "Remedial menyeluruh"
+            rekomendasi.append("Remedial intensif & pendampingan")
 
-    data['Rekomendasi'] = data['Kategori'].apply(rekomendasi)
+    df['Rekomendasi'] = rekomendasi
 
-    st.write(data[['Nama', 'Kategori', 'Rekomendasi']])
+    st.dataframe(df[['Nama', 'Kategori', 'Rekomendasi']])
 
-    # ===== ANALISIS KELAS =====
-st.subheader("📊 Analisis Kelas")
+    # ===== DOWNLOAD (WAH BANGET) =====
+    st.subheader("⬇️ Download Hasil")
 
-total = len(data)
-cluster_counts = data['Kategori'].value_counts()
+    csv = df.to_csv(index=False).encode('utf-8')
 
-for kategori, jumlah in cluster_counts.items():
-    persen = (jumlah / total) * 100
-    st.write(f"{kategori}: {jumlah} siswa ({persen:.1f}%)")
+    st.download_button(
+        label="Download hasil analisis",
+        data=csv,
+        file_name="hasil_mathtrack.csv",
+        mime="text/csv"
+    )
 
-# ===== IDENTIFIKASI DOMINAN =====
-dominant = cluster_counts.idxmax()
-
-st.subheader("🎯 Kesimpulan Utama")
-st.success(f"Mayoritas siswa berada pada kategori: {dominant}")
-
-# ===== PRIORITAS PEMBELAJARAN =====
-st.subheader("📌 Prioritas Pembelajaran")
-
-if dominant == "Kelompok 1":
-    st.write("Fokus utama: Penguatan konsep PECaHAN")
-    st.write("Strategi: Latihan bertahap, visualisasi, dan konteks sehari-hari")
-elif dominant == "Kelompok 2":
-    st.write("Fokus utama: Penguatan konsep ALJABAR")
-    st.write("Strategi: Pemahaman variabel, pola, dan soal kontekstual")
 else:
-    st.write("Fokus utama: Remedial MENYELURUH")
-    st.write("Strategi: Pengulangan konsep dasar dan pendampingan intensif")
-
-# ===== SARAN UNTUK GURU =====
-st.subheader("👩‍🏫 Rekomendasi untuk Guru")
-
-st.write("• Gunakan pembelajaran diferensiasi berdasarkan hasil clustering")
-st.write("• Kelompokkan siswa sesuai kategori untuk pembelajaran targeted")
-st.write("• Berikan latihan spesifik sesuai kelemahan siswa")
-st.write("• Lakukan evaluasi berkala untuk melihat perkembangan")
-
-# ===== INSIGHT TAMBAHAN =====
-st.subheader("💡 Insight Sistem")
-
-if len(cluster_counts) > 1:
-    st.write("Terdapat variasi kemampuan siswa, diperlukan strategi pembelajaran adaptif")
-else:
-    st.write("Kemampuan siswa relatif homogen")
-
-st.info("Sistem ini membantu guru dalam pengambilan keputusan berbasis data (data-driven decision making)")
+    st.info("Silakan upload file Excel terlebih dahulu")
